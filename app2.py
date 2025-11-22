@@ -23,24 +23,102 @@ st.set_page_config(
 st.markdown("""
     <style>
     .main-header {
-        background: linear-gradient(90deg, #0f172a, #1d4ed8);
+        background: linear-gradient(120deg, #0f172a, #1d4ed8, #6366f1);
+        background-size: 200% 200%;
+        animation: gradientMove 8s ease-in-out infinite;
         padding: 20px 25px;
         border-radius: 18px;
         color: white;
         margin-bottom: 20px;
+        box-shadow: 0 18px 40px rgba(15,23,42,0.45);
+        position: relative;
+        overflow: hidden;
+    }
+    .main-header::after{
+        content:"";
+        position:absolute;
+        inset:-40px;
+        background: radial-gradient(circle at top left, rgba(255,255,255,0.18), transparent 55%);
+        opacity:.6;
+        pointer-events:none;
     }
     .main-header h1 {
         font-size: 28px;
         margin-bottom: 5px;
+        position: relative;
+        z-index: 1;
     }
     .main-header p {
         font-size: 14px;
         margin-top: 0;
         opacity: 0.9;
+        position: relative;
+        z-index: 1;
     }
+    .main-header p.tw {
+        display:inline-block;
+        white-space:nowrap;
+        overflow:hidden;
+        border-right:2px solid rgba(255,255,255,0.85);
+        padding-right:4px;
+        animation:
+            typing 7s steps(90, end) infinite alternate,
+            blink .8s step-end infinite;
+    }
+
+    @keyframes gradientMove {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    @keyframes typing {
+        from { width: 0; }
+        to   { width: 100%; }
+    }
+    @keyframes blink {
+        from, to { border-color: transparent; }
+        50%      { border-color: rgba(255,255,255,0.9); }
+    }
+
     .small-note {
         font-size: 12px;
         color: #6b7280;
+    }
+
+    /* ===== Hero cards di header ===== */
+    .hero-grid{
+        display:flex;
+        flex-wrap:wrap;
+        gap:12px;
+        margin-top:10px;
+        position:relative;
+        z-index:1;
+    }
+    .hero-card{
+        flex:1 1 210px;
+        background: rgba(15,23,42,0.86);
+        border-radius:16px;
+        padding:10px 14px;
+        border:1px solid rgba(148,163,184,0.45);
+        box-shadow:0 10px 26px rgba(15,23,42,0.4);
+        backdrop-filter: blur(10px);
+        animation: floatCard 5s ease-in-out infinite;
+    }
+    .hero-card:nth-child(2){ animation-delay: .6s; }
+    .hero-card:nth-child(3){ animation-delay: 1.2s; }
+    .hero-card-title{
+        font-size:13px;
+        font-weight:600;
+        margin-bottom:4px;
+    }
+    .hero-card-desc{
+        font-size:11px;
+        opacity:0.9;
+        margin:0;
+    }
+    @keyframes floatCard{
+        0%,100%{ transform: translateY(0); }
+        50%{ transform: translateY(-4px); }
     }
 
     /* ===== Styling & Animasi TAB ===== */
@@ -80,7 +158,62 @@ st.markdown("""
         to   { opacity: 1; transform: translateY(0); }
     }
 
-    /* Highlight kartu hasil prediksi */
+    /* ===== Badge info dataset animasi ===== */
+    .data-alert{
+        margin-top:14px;
+        padding:12px 16px;
+        border-radius:18px;
+        background:linear-gradient(120deg,#dcfce7,#e0f2fe);
+        border:1px solid #22c55e55;
+        display:flex;
+        align-items:center;
+        gap:10px;
+        box-shadow:0 8px 20px rgba(34,197,94,0.25);
+        animation: slideIn .45s ease-out;
+    }
+    .data-alert-icon{
+        font-size:20px;
+    }
+    .data-alert-text{
+        font-size:13px;
+        color:#065f46;
+    }
+    .data-alert-text strong{
+        color:#15803d;
+    }
+    @keyframes slideIn{
+        from{ opacity:0; transform: translateY(6px); }
+        to  { opacity:1; transform: translateY(0); }
+    }
+
+    /* ===== Chip section title di atas cuplikan data ===== */
+    .section-title{
+        margin-top:22px;
+        margin-bottom:8px;
+        display:flex;
+        flex-direction:column;
+        gap:4px;
+    }
+    .section-pill{
+        display:inline-flex;
+        align-items:center;
+        gap:8px;
+        align-self:flex-start;
+        background:linear-gradient(120deg,#eff6ff,#e0f2fe);
+        border-radius:999px;
+        padding:6px 14px;
+        font-weight:600;
+        color:#1e293b;
+        border:1px solid #bfdbfe;
+        box-shadow:0 6px 18px rgba(148,163,184,0.35);
+        font-size:13px;
+    }
+    .section-sub{
+        font-size:12px;
+        color:#6b7280;
+    }
+
+    /* Highlight kartu hasil prediksi (kode lama tetap, hanya diperkaya) */
     .prediction-card {
         border-radius: 18px;
         padding: 18px 20px;
@@ -200,7 +333,22 @@ def generate_cluster_text_summary(df_profile, selected_features):
 st.markdown("""
 <div class="main-header">
   <h1>💹 Dashboard Clustering Penanaman Modal Asing (PMA) – Kota Surabaya</h1>
-  <p>Pipeline: Winsorizing → Z-Score → PCA → Penentuan K → K-Means → Evaluasi Cluster & Prediksi</p>
+  <p class="tw">Pipeline: Winsorizing → Z-Score → PCA → Penentuan K → K-Means → Evaluasi Cluster & Prediksi</p>
+
+  <div class="hero-grid">
+    <div class="hero-card">
+      <div class="hero-card-title">🧼 Langkah 1 – Preprocessing</div>
+      <p class="hero-card-desc">Deteksi outlier dengan winsorizing dan samakan skala fitur menggunakan Z-Score.</p>
+    </div>
+    <div class="hero-card">
+      <div class="hero-card-title">🧬 Langkah 2 – PCA</div>
+      <p class="hero-card-desc">Reduksi dimensi ke dua komponen utama agar pola negara investor mudah divisualisasikan.</p>
+    </div>
+    <div class="hero-card">
+      <div class="hero-card-title">🧩 Langkah 3 – K-Means & Prediksi</div>
+      <p class="hero-card-desc">Kelompokkan negara, evaluasi kualitas cluster, dan uji skenario baru dengan fitur prediksi.</p>
+    </div>
+  </div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -244,7 +392,21 @@ DATA_PATH = "PMA_Investasi2 (1).xlsx"
 try:
     with st.spinner(f"📥 Membaca dataset dari `{DATA_PATH}` ..."):
         df_raw = pd.read_excel(DATA_PATH)
+    # pesan sukses lama tetap
     st.success(f"Dataset berhasil dimuat. Baris: {df_raw.shape[0]}, Kolom: {df_raw.shape[1]}")
+    # kartu info dataset tambahan yang animatif
+    st.markdown(
+        f"""
+        <div class="data-alert">
+          <div class="data-alert-icon">📊</div>
+          <div class="data-alert-text">
+            Dataset PMA Surabaya siap dianalisis. <strong>{df_raw.shape[0]} negara</strong> investor dengan 
+            <strong>{df_raw.shape[1]} variabel</strong> akan diproses melalui pipeline clustering interaktif.
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 except FileNotFoundError:
     st.error(
         f"File `{DATA_PATH}` tidak ditemukan.\n\n"
@@ -261,6 +423,14 @@ for candidate in ["Negara", "Country", "NEGARA"]:
 
 numeric_cols = [c for c in df_raw.columns if np.issubdtype(df_raw[c].dtype, np.number)]
 default_features = [c for c in numeric_cols]
+
+# Section title tambahan (tanpa menghapus subheader lama)
+st.markdown("""
+<div class="section-title">
+  <div class="section-pill">📦 Cuplikan Data Asli</div>
+  <p class="section-sub">Lima baris pertama sebagai gambaran awal sebelum Winsorizing & normalisasi.</p>
+</div>
+""", unsafe_allow_html=True)
 
 st.subheader("📦 Cuplikan Data Asli")
 st.dataframe(df_raw.head(), use_container_width=True)
