@@ -79,6 +79,19 @@ st.markdown("""
         from { opacity: 0; transform: translateY(6px); }
         to   { opacity: 1; transform: translateY(0); }
     }
+
+    /* Highlight kartu hasil prediksi */
+    .prediction-card {
+        border-radius: 18px;
+        padding: 18px 20px;
+        background: linear-gradient(120deg,#22c55e1a,#22c55e33);
+        border: 1px solid #22c55e55;
+        box-shadow: 0 12px 30px rgba(22,163,74,0.28);
+        margin-bottom: 12px;
+    }
+    .prediction-card h3 {
+        margin: 0 0 6px 0;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -715,12 +728,14 @@ with tab_pred:
     st.header("🤖 Prediksi Cluster untuk Negara / Skenario Baru")
 
     st.markdown("""
-    Masukkan nilai fitur (misalnya skenario negara baru atau perubahan investasi), lalu tekan tombol **Prediksi**.
+    Masukkan nilai fitur (misalnya skenario negara baru atau perubahan investasi), lalu tekan tombol **Prediksi Cluster**.
+    
     Sistem akan:
-    1. Menggunakan pipeline yang sama (normalisasi + PCA + K-Means).
-    2. Menentukan negara tersebut masuk **cluster ke berapa**.
-    3. Menampilkan animasi posisi titik baru di ruang PCA.
-    4. Memberikan interpretasi otomatis.
+    1. Menjalankan pipeline yang sama (Winsorizing → Z-Score → PCA → K-Means).
+    2. Menentukan data tersebut masuk **cluster ke berapa**.
+    3. Menampilkan **animasi** posisi titik baru di ruang PCA.
+    4. Menampilkan **party animation + sound** ketika prediksi berhasil.
+    5. Memberikan **interpretasi otomatis** berdasarkan profil cluster.
     """)
 
     with st.form("form_prediksi"):
@@ -744,6 +759,22 @@ with tab_pred:
         submitted = st.form_submit_button("🔮 Prediksi Cluster")
 
     if submitted:
+        # 🎉 PARTY MODE: balon + sound
+        st.balloons()
+        st.markdown("""
+            <audio autoplay>
+                <source src="https://www.soundjay.com/human/sounds/cheering-6.mp3" type="audio/mpeg">
+            </audio>
+        """, unsafe_allow_html=True)
+
+        st.markdown(
+            "<div class='prediction-card'>"
+            "<h3>🎊 Prediksi Berhasil!</h3>"
+            "<p>Berikut hasil pengelompokan dan interpretasi untuk skenario yang kamu masukkan.</p>"
+            "</div>",
+            unsafe_allow_html=True
+        )
+
         st.subheader("📌 Hasil Prediksi")
 
         # Data baru
@@ -780,10 +811,10 @@ with tab_pred:
                 color="Cluster",
                 hover_data=["Jenis"],
                 animation_frame="Jenis",
-                title="Animasi Posisi Data Baru di Ruang PCA"
+                title="🎞️ Animasi Posisi Data Baru di Ruang PCA"
             )
             fig_pred.update_traces(marker=dict(size=10, line=dict(width=1)))
-            fig_pred.update_layout(transition_duration=500)
+            fig_pred.update_layout(transition_duration=600)
             st.plotly_chart(fig_pred, use_container_width=True)
 
         with col_pred2:
@@ -795,17 +826,23 @@ with tab_pred:
                 "Jarak ke Centroid": dists
             })
 
-            st.markdown("**Jarak ke centroid tiap cluster:**")
+            st.markdown("**📏 Jarak ke centroid tiap cluster:**")
             st.dataframe(dist_df.style.format({"Jarak ke Centroid": "{:.3f}"}), use_container_width=True)
 
             fig_dist = px.bar(
                 dist_df,
                 x="Cluster",
                 y="Jarak ke Centroid",
-                title="Jarak Data Baru ke Masing-Masing Centroid",
+                title="📊 Jarak Data Baru ke Masing-Masing Centroid",
             )
-            fig_dist.update_layout(transition_duration=500)
+            fig_dist.update_layout(transition_duration=400)
             st.plotly_chart(fig_dist, use_container_width=True)
+
+            # Skor "confidence" sederhana berbasis jarak centroid
+            # (semakin dekat ke centroid cluster_pred → confidence makin tinggi)
+            max_dist = dists.max() if dists.max() > 0 else 1.0
+            confidence = 1 - (dists[cluster_pred] / max_dist)
+            st.metric("Confidence (relatif)", f"{confidence*100:,.1f} %")
 
         # Interpretasi berbasis profil cluster
         st.subheader("🧠 Interpretasi Otomatis")
@@ -814,7 +851,6 @@ with tab_pred:
         df_profile_pred["Cluster"] = df_profile_pred["Cluster"].astype(int)
 
         # Tentukan fitur utama untuk ranking (pakai investasi jika ada)
-        main_feat = None
         if invest_col and invest_col in selected_features:
             main_feat = invest_col
         else:
@@ -836,9 +872,10 @@ with tab_pred:
             kategori = "kelompok menengah"
 
         st.markdown(f"""
-        - Berdasarkan fitur **{main_feat}**, **Cluster {cluster_pred}** termasuk {kategori} dibanding cluster lain.
-        - Jarak ke centroid **Cluster {cluster_pred}** adalah sekitar **{dists[cluster_pred]:.3f}** di ruang PCA.
+        - Berdasarkan fitur utama **{main_feat}**, **Cluster {cluster_pred}** termasuk **{kategori}** dibanding cluster lain.
+        - Jarak ke centroid **Cluster {cluster_pred}** ≈ **{dists[cluster_pred]:.3f}** di ruang PCA.
         - Semakin kecil jarak ke centroid, semakin mirip karakteristik data baru ini dengan pola negara-negara dalam cluster tersebut.
+        - Nilai confidence relatif: **{confidence*100:,.1f}%** (semakin tinggi → semakin yakin model terhadap cluster ini).
         """)
 
         st.markdown("""
@@ -849,7 +886,8 @@ with tab_pred:
         > paling mendekati negara-negara yang tergabung dalam cluster yang sama. 
         > Jika dilihat dari profil rata-rata cluster, Cluster X berada pada kategori 
         > (tinggi/menengah/rendah) dari sisi indikator utama, sehingga skenario ini dapat 
-        > diinterpretasikan sebagai (negara/skenario) dengan kontribusi investasi yang (relatif tinggi/menengah/rendah).
+        > diinterpretasikan sebagai (negara/skenario) dengan kontribusi investasi yang 
+        > relatif (kuat/sedang/lemah).
         """)
 
     st.markdown('</div>', unsafe_allow_html=True)
